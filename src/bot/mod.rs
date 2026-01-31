@@ -83,6 +83,18 @@ async fn handle_command(
             };
             bot.send_message(msg.chat.id, response).await?;
         }
+        Command::Help => {
+            let help_text = "📖 Kora Reclaim Bot Help\n\n\
+                Commands:\n\
+                /stats - View reclamation metrics\n\
+                /sweep - Trigger an immediate scan\n\
+                /log   - View recent event history\n\n\
+                Setup:\n\
+                To securely import your Solana keypair, run the binary with:\n\
+                `./kora-reclaim-rs --import-key <path_to_keypair.json>`\n\n\
+                This will encrypt the key into the local database, allowing you to delete the source file.";
+            bot.send_message(msg.chat.id, help_text).await?;
+        }
     }
 
     Ok(())

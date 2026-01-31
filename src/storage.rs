@@ -189,4 +189,12 @@ impl Storage {
         }
         Ok(results)
     }
+
+    pub fn save_keypair(&self, keypair_json: &str) -> Result<()> {
+        self.set_setting("solana_keypair", keypair_json, true)
+    }
+
+    pub fn get_keypair(&self) -> Result<Option<String>> {
+        self.get_setting("solana_keypair")
+    }
 }

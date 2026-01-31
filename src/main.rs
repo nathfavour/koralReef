@@ -33,6 +33,10 @@ struct Args {
     /// Set Telegram Bot Token
     #[arg(long)]
     token: Option<String>,
+
+    /// Import Solana keypair from file to encrypted database
+    #[arg(long)]
+    import_key: Option<String>,
 }
 
 #[tokio::main]
@@ -43,6 +47,14 @@ async fn main() -> anyhow::Result<()> {
 
     let storage = Arc::new(Storage::init()?);
     let cancel_token = CancellationToken::new();
+
+    if let Some(path) = args.import_key {
+        let key_data = std::fs::read_to_string(path)?;
+        // Validate it's a JSON array
+        let _: Vec<u8> = serde_json::from_str(&key_data).context("Invalid keypair JSON format")?;
+        storage.save_keypair(&key_data)?;
+        info!("Solana keypair imported and encrypted successfully.");
+    }
 
     // Initial config loading logic
     let mut config = if let Some(path) = args.config {
@@ -170,12 +182,16 @@ async fn sentinel_loop(
 
     let scanner = Scanner::new(&config.solana.rpc_url);
     
-    let keypair_res = if config.solana.keypair_path.is_empty() {
-        Err(anyhow::anyhow!("No keypair path provided"))
-    } else {
+    // Check storage for keypair first, then fallback to config path
+    let keypair_res = if let Some(key_json) = storage.get_keypair()? {
+        let keypair_vec: Vec<u8> = serde_json::from_str(&key_json)?;
+        Ok(Keypair::from_bytes(&keypair_vec)?)
+    } else if !config.solana.keypair_path.is_empty() {
         let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)?;
         let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)?;
         Ok(Keypair::from_bytes(&keypair_vec)?)
+    } else {
+        Err(anyhow::anyhow!("No keypair found in storage or config"))
     };
 
     let keypair = match keypair_res {
