@@ -9,6 +9,7 @@ use kora_reclaim_rs::bot;
 use kora_reclaim_rs::storage::Storage;
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::pubkey::Pubkey;
+use teloxide::requests::Requester;
 use std::str::FromStr;
 use log::{info, error, warn};
 use clap::Parser;
@@ -98,12 +99,36 @@ fn load_config_from_storage(storage: &Storage) -> anyhow::Result<Config> {
     Ok(config)
 }
 
-async fn sentinel_loop(config: Config, state: SharedState, _storage: Arc<Storage>) -> anyhow::Result<()> {
+async fn sentinel_loop(config: Config, state: SharedState, storage: Arc<Storage>) -> anyhow::Result<()> {
+    let bot = if !config.telegram.bot_token.is_empty() {
+        Some(teloxide::prelude::Bot::new(config.telegram.bot_token.clone()))
+    } else {
+        None
+    };
+
     if config.mode == AppMode::Demo {
         info!("Sentinel running in DEMO mode.");
         loop {
+            let mut force = false;
+            {
+                let mut s = state.lock().await;
+                if s.force_run { force = true; s.force_run = false; }
+            }
+
+            if force || should_scan(&state, config.settings.scan_interval_hours).await {
+                info!("Demo scan triggered.");
+                let msg = "♻️ [DEMO] Simulated reclaim of 2 accounts (0.004 SOL).";
+                storage.log_event(msg)?;
+                
+                if let (Some(b), Some(admin_id)) = (&bot, storage.get_admin()?) {
+                    let _ = b.send_message(teloxide::types::ChatId(admin_id as i64), msg).await;
+                }
+
+                let mut s = state.lock().await;
+                s.last_scan_time = Some(std::time::Instant::now());
+                s.last_reclaim_summary = Some(msg.to_string());
+            }
             sleep(Duration::from_secs(30)).await;
-            info!("Demo scan: no accounts found.");
         }
     }
 
@@ -154,12 +179,30 @@ async fn sentinel_loop(config: Config, state: SharedState, _storage: Arc<Storage
                             s.total_reclaimed_lamports += lamports;
                             s.total_accounts_closed += count;
                             s.last_scan_time = Some(std::time::Instant::now());
-                            info!("Reclaim cycle complete. Reclaimed {} accounts.", count);
+                            
+                            let sol = lamports as f64 / 1_000_000_000.0;
+                            let summary = format!("♻️ Reclaimed {} accounts ({:.4} SOL).", count, sol);
+                            s.last_reclaim_summary = Some(summary.clone());
+                            
+                            info!("{}", summary);
+                            storage.log_event(&summary)?;
+
+                            if let (Some(b), Some(admin_id)) = (&bot, storage.get_admin()?) {
+                                let _ = b.send_message(teloxide::types::ChatId(admin_id as i64), summary).await;
+                            }
                         }
-                        Err(e) => error!("Reclaim error: {}", e),
+                        Err(e) => {
+                            let err_msg = format!("❌ Reclaim error: {}", e);
+                            error!("{}", err_msg);
+                            let _ = storage.log_event(&err_msg);
+                        }
                     }
                 }
-                Err(e) => error!("Scanner error: {}", e),
+                Err(e) => {
+                    let err_msg = format!("❌ Scanner error: {}", e);
+                    error!("{}", err_msg);
+                    let _ = storage.log_event(&err_msg);
+                }
             }
         }
 

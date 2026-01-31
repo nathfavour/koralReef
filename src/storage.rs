@@ -164,4 +164,29 @@ impl Storage {
         )?;
         Ok(())
     }
+
+    pub fn log_event(&self, event: &str) -> Result<()> {
+        let conn = Connection::open(&self.db_path)?;
+        conn.execute(
+            "INSERT INTO history (event) VALUES (?1)",
+            [event],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_recent_history(&self, limit: i32) -> Result<Vec<String>> {
+        let conn = Connection::open(&self.db_path)?;
+        let mut stmt = conn.prepare("SELECT timestamp, event FROM history ORDER BY id DESC LIMIT ?1")?;
+        let rows = stmt.query_map([limit], |row| {
+            let ts: String = row.get(0)?;
+            let event: String = row.get(1)?;
+            Ok(format!("[{}] {}", ts, event))
+        })?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
 }

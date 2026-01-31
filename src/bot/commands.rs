@@ -9,4 +9,6 @@ pub enum Command {
     Stats,
     #[command(description = "Manually trigger a scan and reclaim")]
     Sweep,
+    #[command(description = "Show recent event history")]
+    Log,
 }

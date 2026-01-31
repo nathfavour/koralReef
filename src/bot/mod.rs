@@ -57,11 +57,14 @@ async fn handle_command(
         Command::Stats => {
             let s = state.lock().await;
             let uptime = s.start_time.elapsed();
+            let last_reclaim = s.last_reclaim_summary.as_deref().unwrap_or("None");
             let response = format!(
-                "📊 Stats:\n- Total Reclaimed: {} SOL\n- Accounts Closed: {}\n- Uptime: {:?}\n- Dry Run: {}",
+                "📊 Stats:\n- Total Reclaimed: {} SOL\n- Accounts Closed: {}\n- Uptime: {:?}\n- Last Event: {}\n- Mode: {:?}\n- Dry Run: {}",
                 s.total_reclaimed_lamports as f64 / 1_000_000_000.0,
                 s.total_accounts_closed,
                 uptime,
+                last_reclaim,
+                config.mode,
                 config.settings.dry_run
             );
             bot.send_message(msg.chat.id, response).await?;
@@ -70,6 +73,15 @@ async fn handle_command(
             let mut s = state.lock().await;
             s.force_run = true;
             bot.send_message(msg.chat.id, "Triggering manual sweep...").await?;
+        }
+        Command::Log => {
+            let logs = storage.get_recent_history(10).unwrap_or_else(|_| vec!["Failed to load logs".to_string()]);
+            let response = if logs.is_empty() {
+                "No events recorded yet.".to_string()
+            } else {
+                format!("📜 Recent History:\n{}", logs.join("\n"))
+            };
+            bot.send_message(msg.chat.id, response).await?;
         }
     }
 
