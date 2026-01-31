@@ -150,7 +150,7 @@ Description=Kora Reclaim Bot (koralreef)
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$BINARY_NAME --config $DATA_DIR/config.toml
+ExecStart=$INSTALL_DIR/$BINARY_NAME --config $DATA_DIR/config.toml --demo-only
 Restart=always
 RestartSec=10
 WorkingDirectory=$DATA_DIR
