@@ -51,13 +51,11 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(path) = args.import_key {
         let key_data = std::fs::read_to_string(path)?;
-        // Validate it's a JSON array
         let _: Vec<u8> = serde_json::from_str(&key_data).context("Invalid keypair JSON format")?;
         storage.save_keypair(&key_data)?;
         info!("Solana keypair imported and encrypted successfully.");
     }
 
-    // Initial config loading logic
     let mut config = if let Some(path) = args.config {
         Config::load(path)?
     } else if let Some(mode_str) = &args.mode {
@@ -116,12 +114,10 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Wait for Ctrl+C
     tokio::signal::ctrl_c().await?;
     info!("Shutdown signal received. Cleaning up...");
     cancel_token.cancel();
     
-    // Give tasks a moment to exit
     sleep(Duration::from_secs(2)).await;
     info!("Goodbye!");
 
@@ -154,124 +150,89 @@ async fn sentinel_loop(
             s.mode
         };
 
-        if current_mode == AppMode::Demo {
-            // ... (demo logic)
-            tokio::select! {
-                _ = cancel_token.cancelled() => {
-                    info!("Sentinel (Demo) shutting down...");
-                    return Ok(());
-                }
-                _ = sleep(Duration::from_secs(30)) => {
-                    let mut force = false;
-                    {
-                        let mut s = state.lock().await;
-                        if s.force_run { force = true; s.force_run = false; }
-                        if s.mode != AppMode::Demo { continue; } // Mode changed
-                    }
-
-                    if force || should_scan(&state, config.settings.scan_interval_hours).await {
-                        info!("Demo scan triggered.");
-                        let msg = "♻️ [DEMO] Simulated reclaim of 2 accounts (0.004 SOL).";
-                        let _ = storage.log_event(msg);
-                        
-                        if let (Some(b), Some(admin_id)) = (&bot, storage.get_admin().unwrap_or(None)) {
-                            let _ = b.send_message(teloxide::types::ChatId(admin_id as i64), msg).await;
+        match current_mode {
+            AppMode::Demo => {
+                tokio::select! {
+                    _ = cancel_token.cancelled() => return Ok(()),
+                    _ = sleep(Duration::from_secs(60)) => {
+                        let mut force = false;
+                        {
+                            let mut s = state.lock().await;
+                            if s.mode != AppMode::Demo { continue; }
+                            if s.force_run { force = true; s.force_run = false; }
                         }
-
-                        let mut s = state.lock().await;
-                        s.last_scan_time = Some(std::time::Instant::now());
-                        s.last_reclaim_summary = Some(msg.to_string());
+                        if force || should_scan(&state, config.settings.scan_interval_hours).await {
+                            let msg = "♻️ [DEMO] Simulated reclaim of 2 accounts (0.004 SOL).";
+                            let _ = storage.log_event(msg);
+                            if let (Some(b), Some(admin_id)) = (&bot, storage.get_admin().unwrap_or(None)) {
+                                let _ = b.send_message(teloxide::types::ChatId(admin_id as i64), msg).await;
+                            }
+                            let mut s = state.lock().await;
+                            s.last_scan_time = Some(std::time::Instant::now());
+                            s.last_reclaim_summary = Some(msg.to_string());
+                        }
                     }
                 }
             }
-            continue;
-        }
+            AppMode::Real => {
+                let scanner = Scanner::new(&config.solana.rpc_url);
+                let keypair_res = if let Some(key_json) = storage.get_keypair()? {
+                    let keypair_vec: Vec<u8> = serde_json::from_str(&key_json)?;
+                    Ok(Keypair::from_bytes(&keypair_vec)?)
+                } else if !config.solana.keypair_path.is_empty() {
+                    let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)?;
+                    let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)?;
+                    Ok(Keypair::from_bytes(&keypair_vec)?)
+                } else {
+                    Err(anyhow::anyhow!("No keypair found"))
+                };
 
-        // Real mode logic...
-        let scanner = Scanner::new(&config.solana.rpc_url);
-        // ... (rest of real mode setup and loop)
-    
-    // Check storage for keypair first, then fallback to config path
-    let keypair_res = if let Some(key_json) = storage.get_keypair()? {
-        let keypair_vec: Vec<u8> = serde_json::from_str(&key_json)?;
-        Ok(Keypair::from_bytes(&keypair_vec)?)
-    } else if !config.solana.keypair_path.is_empty() {
-        let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)?;
-        let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)?;
-        Ok(Keypair::from_bytes(&keypair_vec)?)
-    } else {
-        Err(anyhow::anyhow!("No keypair found in storage or config"))
-    };
-
-    let keypair = match keypair_res {
-        Ok(k) => k,
-        Err(e) => {
-            error!("Failed to load keypair: {}. Sentinel will wait.", e);
-            tokio::select! {
-                _ = cancel_token.cancelled() => return Ok(()),
-                _ = sleep(Duration::from_secs(3600)) => {} 
-            }
-            return Err(e);
-        }
-    };
-
-    let keypair_pubkey = keypair.pubkey();
-    let treasury = Pubkey::from_str(&config.solana.treasury_address)?;
-    let reclaimer = Reclaimer::new(&config.solana.rpc_url, keypair, treasury);
-
-    loop {
-        tokio::select! {
-            _ = cancel_token.cancelled() => {
-                info!("Sentinel (Real) shutting down...");
-                return Ok(());
-            }
-            _ = sleep(Duration::from_secs(60)) => {
-                let mut force = false;
-                {
-                    let mut s = state.lock().await;
-                    if s.force_run {
-                        force = true;
-                        s.force_run = false;
+                let keypair = match keypair_res {
+                    Ok(k) => k,
+                    Err(e) => {
+                        error!("Real mode requires keypair: {}", e);
+                        tokio::select! {
+                            _ = cancel_token.cancelled() => return Ok(()),
+                            _ = sleep(Duration::from_secs(60)) => continue,
+                        }
                     }
-                }
+                };
 
-                if force || should_scan(&state, config.settings.scan_interval_hours).await {
-                    info!("Starting scan...");
-                    
-                    match scanner.find_reclaimable_accounts(&keypair_pubkey, &config.settings.whitelist) {
-                        Ok(accounts) => {
-                            info!("Found {} reclaimable accounts", accounts.len());
-                            let pubkeys: Vec<Pubkey> = accounts.iter().map(|(p, _)| *p).collect();
-                            
-                            match reclaimer.reclaim_accounts(&pubkeys, config.settings.dry_run) {
-                                Ok((lamports, count)) => {
-                                    let mut s = state.lock().await;
-                                    s.total_reclaimed_lamports += lamports;
-                                    s.total_accounts_closed += count;
-                                    s.last_scan_time = Some(std::time::Instant::now());
-                                    
-                                    let sol = lamports as f64 / 1_000_000_000.0;
-                                    let summary = format!("♻️ Reclaimed {} accounts ({:.4} SOL).", count, sol);
-                                    s.last_reclaim_summary = Some(summary.clone());
-                                    
-                                    info!("{}", summary);
-                                    let _ = storage.log_event(&summary);
+                let keypair_pubkey = keypair.pubkey();
+                let treasury = Pubkey::from_str(&config.solana.treasury_address)?;
+                let reclaimer = Reclaimer::new(&config.solana.rpc_url, keypair, treasury);
 
-                                    if let (Some(b), Some(admin_id)) = (&bot, storage.get_admin().unwrap_or(None)) {
-                                        let _ = b.send_message(teloxide::types::ChatId(admin_id as i64), summary).await;
+                tokio::select! {
+                    _ = cancel_token.cancelled() => return Ok(()),
+                    _ = sleep(Duration::from_secs(60)) => {
+                        let mut force = false;
+                        {
+                            let mut s = state.lock().await;
+                            if s.mode != AppMode::Real { continue; }
+                            if s.force_run { force = true; s.force_run = false; }
+                        }
+                        if force || should_scan(&state, config.settings.scan_interval_hours).await {
+                            match scanner.find_reclaimable_accounts(&keypair_pubkey, &config.settings.whitelist) {
+                                Ok(accounts) => {
+                                    let pubkeys: Vec<Pubkey> = accounts.iter().map(|(p, _)| *p).collect();
+                                    match reclaimer.reclaim_accounts(&pubkeys, config.settings.dry_run) {
+                                        Ok((lamports, count)) => {
+                                            let mut s = state.lock().await;
+                                            s.total_reclaimed_lamports += lamports;
+                                            s.total_accounts_closed += count;
+                                            s.last_scan_time = Some(std::time::Instant::now());
+                                            let summary = format!("♻️ Reclaimed {} accounts ({:.4} SOL).", count, lamports as f64 / 1e9);
+                                            s.last_reclaim_summary = Some(summary.clone());
+                                            let _ = storage.log_event(&summary);
+                                            if let (Some(b), Some(admin_id)) = (&bot, storage.get_admin().unwrap_or(None)) {
+                                                let _ = b.send_message(teloxide::types::ChatId(admin_id as i64), summary).await;
+                                            }
+                                        }
+                                        Err(e) => { let _ = storage.log_event(&format!("❌ Reclaim error: {}", e)); }
                                     }
                                 }
-                                Err(e) => {
-                                    let err_msg = format!("❌ Reclaim error: {}", e);
-                                    error!("{}", err_msg);
-                                    let _ = storage.log_event(&err_msg);
-                                }
+                                Err(e) => { let _ = storage.log_event(&format!("❌ Scanner error: {}", e)); }
                             }
-                        }
-                        Err(e) => {
-                            let err_msg = format!("❌ Scanner error: {}", e);
-                            error!("{}", err_msg);
-                            let _ = storage.log_event(&err_msg);
                         }
                     }
                 }

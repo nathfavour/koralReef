@@ -1,6 +1,7 @@
 pub mod commands;
 
 use teloxide::prelude::*;
+use teloxide::utils::command::BotCommands;
 use crate::state::SharedState;
 use crate::config::Config;
 use crate::bot::commands::Command;
