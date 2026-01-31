@@ -13,7 +13,7 @@ if [ -z "$HOME" ]; then
 fi
 
 REPO_URL="https://github.com/nathfavour/koralReef.git"
-BINARY_NAME="koralReef"
+BINARY_NAME="koralreef"
 PROJECT_NAME="kora-reclaim-rs"
 INSTALL_DIR="$HOME/.local/bin"
 DATA_DIR="$HOME/.koralReef"
