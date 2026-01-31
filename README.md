@@ -20,9 +20,14 @@ curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/main/install.sh
 This script will:
 1. Install Rust (if not already present).
 2. Build the project from source.
-3. Install the binary to `~/.local/bin/kora-reclaim`.
+3. Install the binary to `~/.local/bin/koralReef`.
 4. Set up a default configuration in `~/.koralReef/config.toml`.
 5. Create a systemd user service (on Linux).
+
+**Note:** Ensure `~/.local/bin` is in your `PATH`. You can add it by adding this to your `.bashrc` or `.zshrc`:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 ### Manual Installation
 1. Clone the repository:
@@ -51,29 +56,42 @@ authorized_user_ids = [12345678]
 
 ## Usage
 
-### Running the Bot
-If you used the install script, you can start the bot with:
+### Running as a Service (Recommended)
+If you used the install script, you can manage the bot using `systemctl`:
+
 ```bash
-systemctl --user start kora-reclaim
+# Start the bot
+systemctl --user start koralReef
+
+# Enable it to start on boot
+systemctl --user enable koralReef
+
+# Check logs
+journalctl --user -u koralReef -f
 ```
 
-To run it manually:
+### Running Manually
 ```bash
-kora-reclaim --config ~/.koralReef/config.toml
+koralReef --config ~/.koralReef/config.toml
 ```
 
 ### Commands
-- `/start` - Initialize connection.
-- `/status` - Get current reclamation metrics.
-- `/sweep` - Force an immediate scan and reclamation.
-- `/log` - View recent activity.
+Interact with the bot via Telegram using these commands:
+- `/start` - Initialize connection and register admin.
+- `/status` - Get current reclamation metrics and health.
+- `/sweep` - Force an immediate scan and reclamation cycle.
+- `/log` - View the last 10 events from the history.
 
 ## Security
-- The bot uses an encrypted SQLite database stored in `~/.koralReef/koral.db`.
-- Keypairs can be imported into the encrypted database using:
+- **Encrypted Storage:** All sensitive data (keys, tokens) is stored in an AES-256-GCM encrypted SQLite database at `~/.koralReef/koral.db`.
+- **Keypair Management:** You can securely import your Solana keypair directly into the encrypted database:
   ```bash
-  kora-reclaim --import-key path/to/keypair.json
+  koralReef --import-key path/to/your/keypair.json
   ```
+  Once imported, the bot no longer needs the plaintext JSON file.
+
+## License
+MIT
 
 ## License
 MIT

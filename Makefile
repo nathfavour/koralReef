@@ -1,6 +1,6 @@
 .PHONY: build install run test clean
 
-BINARY_NAME=kora-reclaim
+BINARY_NAME=koralReef
 PROJECT_NAME=kora-reclaim-rs
 PREFIX ?= $(HOME)/.local
 BINDIR = $(PREFIX)/bin

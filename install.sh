@@ -13,7 +13,7 @@ if [ -z "$HOME" ]; then
 fi
 
 REPO_URL="https://github.com/nathfavour/koralReef.git"
-BINARY_NAME="kora-reclaim"
+BINARY_NAME="koralReef"
 PROJECT_NAME="kora-reclaim-rs"
 INSTALL_DIR="$HOME/.local/bin"
 DATA_DIR="$HOME/.koralReef"
@@ -84,9 +84,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     SERVICE_DIR="$HOME/.config/systemd/user"
     mkdir -p "$SERVICE_DIR"
     
-    cat <<EOF > "$SERVICE_DIR/kora-reclaim.service"
+    cat <<EOF > "$SERVICE_DIR/koralReef.service"
 [Unit]
-Description=Kora Reclaim Bot
+Description=Kora Reclaim Bot (koralReef)
 After=network.target
 
 [Service]
@@ -102,10 +102,10 @@ WantedBy=default.target
 EOF
 
     systemctl --user daemon-reload
-    echo -e "${GREEN}Systemd user service created at $SERVICE_DIR/kora-reclaim.service${NC}"
-    echo -e "${BLUE}To start the bot: ${NC}systemctl --user start kora-reclaim"
-    echo -e "${BLUE}To check status:  ${NC}systemctl --user status kora-reclaim"
-    echo -e "${BLUE}To enable on boot: ${NC}systemctl --user enable kora-reclaim"
+    echo -e "${GREEN}Systemd user service created at $SERVICE_DIR/koralReef.service${NC}"
+    echo -e "${BLUE}To start the bot: ${NC}systemctl --user start koralReef"
+    echo -e "${BLUE}To check status:  ${NC}systemctl --user status koralReef"
+    echo -e "${BLUE}To enable on boot: ${NC}systemctl --user enable koralReef"
     echo -e "${YELLOW}Note: Run 'loginctl enable-linger \$USER' to allow the service to run without an active session.${NC}"
 fi
 
