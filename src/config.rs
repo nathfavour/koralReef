@@ -38,8 +38,11 @@ pub struct Settings {
 
 impl Config {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+        if !path.as_ref().exists() {
+            return Ok(Self::demo());
+        }
         let content = std::fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&content)?;
+        let config: Config = toml::from_str(&content).unwrap_or_else(|_| Self::demo());
         Ok(config)
     }
 

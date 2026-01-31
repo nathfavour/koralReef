@@ -57,15 +57,16 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let mut config = if let Some(path) = args.config {
-        Config::load(path)?
+        Config::load(path).unwrap_or_else(|_| Config::demo())
     } else if let Some(mode_str) = &args.mode {
-        if mode_str.to_lowercase() == "demo" {
-            Config::demo()
+        if mode_str.to_lowercase() == "real" {
+             load_config_from_storage(&storage).unwrap_or_else(|_| Config::demo())
         } else {
-            load_config_from_storage(&storage).unwrap_or_else(|_| Config::demo())
+            Config::demo()
         }
     } else {
-        load_config_from_storage(&storage).unwrap_or_else(|_| Config::demo())
+        // Default to Demo if no config/mode specified
+        Config::demo()
     };
 
     if let Some(token) = args.token {

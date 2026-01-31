@@ -103,17 +103,11 @@ authorized_user_ids = [12345678]
 ## Usage
 
 ### Running as a Service (Recommended)
-If you used the install script, you can manage the bot using `systemctl`:
+By default, the bot starts in **Demo Mode**. This allows you to test the Telegram interface without requiring a Solana keypair or real funds.
 
 ```bash
 # Start the bot
 systemctl --user start koralreef
-
-# Enable it to start on boot
-systemctl --user enable koralreef
-
-# Check logs
-journalctl --user -u koralreef -f
 ```
 
 ### Running Manually
