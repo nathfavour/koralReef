@@ -180,20 +180,25 @@ async fn sentinel_loop(
                     let keypair_vec: Vec<u8> = serde_json::from_str(&key_json)?;
                     Ok(Keypair::from_bytes(&keypair_vec)?)
                 } else if !config.solana.keypair_path.is_empty() {
-                    let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)?;
-                    let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)?;
-                    Ok(Keypair::from_bytes(&keypair_vec)?)
+                    match std::fs::read_to_string(&config.solana.keypair_path) {
+                        Ok(keypair_bytes) => {
+                            let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)?;
+                            Ok(Keypair::from_bytes(&keypair_vec)?)
+                        }
+                        Err(e) => Err(anyhow::anyhow!("Failed to read keypair file at {}: {}", config.solana.keypair_path, e)),
+                    }
                 } else {
-                    Err(anyhow::anyhow!("No keypair found"))
+                    Err(anyhow::anyhow!("No keypair found in database or config file"))
                 };
 
                 let keypair = match keypair_res {
                     Ok(k) => k,
                     Err(e) => {
-                        error!("Real mode requires keypair: {}", e);
+                        error!("Real mode initialization failed: {}", e);
+                        warn!("Please import a key using --import-key or set a valid keypair_path in config.toml");
                         tokio::select! {
                             _ = cancel_token.cancelled() => return Ok(()),
-                            _ = sleep(Duration::from_secs(60)) => continue,
+                            _ = sleep(Duration::from_secs(300)) => continue,
                         }
                     }
                 };
