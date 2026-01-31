@@ -22,5 +22,9 @@ pub fn is_safe_to_reclaim(pubkey: &Pubkey, account: &Account, whitelist: &[Strin
         return false;
     }
 
+    if account.lamports == 0 {
+        return false;
+    }
+
     true
 }

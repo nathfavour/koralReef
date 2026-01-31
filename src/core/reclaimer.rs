@@ -2,7 +2,6 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::transaction::Transaction;
-use solana_sdk::instruction::Instruction;
 use spl_token::instruction::close_account;
 use anyhow::Result;
 use log::{info, error};
@@ -32,7 +31,7 @@ impl Reclaimer {
             return Ok((0, accounts.len() as u64));
         }
 
-        let mut total_lamports = 0;
+        let total_lamports = 0;
         let mut closed_count = 0;
 
         // Batch instructions (up to 20 per transaction)

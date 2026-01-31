@@ -1,26 +1,39 @@
-mod config;
-mod state;
-mod bot;
-mod core;
-
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
-use crate::config::Config;
-use crate::state::{AppState, SharedState};
-use crate::core::scanner::Scanner;
-use crate::core::reclaimer::Reclaimer;
+use kora_reclaim_rs::config::Config;
+use kora_reclaim_rs::state::{AppState, SharedState};
+use kora_reclaim_rs::core::scanner::Scanner;
+use kora_reclaim_rs::core::reclaimer::Reclaimer;
+use kora_reclaim_rs::bot;
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 use log::{info, error};
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Path to the configuration file
+    #[arg(short, long, default_value = "config.toml")]
+    config: String,
+
+    /// Run in dry-run mode (overrides config)
+    #[arg(short, long)]
+    dry_run: bool,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
+    let args = Args::parse();
     info!("Starting kora-reclaim-rs...");
 
-    let config = Config::load("config.toml").expect("Failed to load config.toml");
+    let mut config = Config::load(&args.config).expect("Failed to load configuration file");
+    if args.dry_run {
+        config.settings.dry_run = true;
+    }
     let state: SharedState = Arc::new(Mutex::new(AppState::new()));
 
     let bot_state = state.clone();
@@ -42,10 +55,10 @@ async fn sentinel_loop(config: Config, state: SharedState) -> anyhow::Result<()>
     
     let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)
         .expect("Failed to read keypair file");
-    // Assuming keypair is a JSON array of bytes
     let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)
         .expect("Failed to parse keypair JSON");
     let keypair = Keypair::from_bytes(&keypair_vec).expect("Invalid keypair bytes");
+    let keypair_pubkey = keypair.pubkey();
     
     let treasury = Pubkey::from_str(&config.solana.treasury_address)?;
     let reclaimer = Reclaimer::new(&config.solana.rpc_url, keypair, treasury);
@@ -62,7 +75,7 @@ async fn sentinel_loop(config: Config, state: SharedState) -> anyhow::Result<()>
 
         if force || should_scan(&state, config.settings.scan_interval_hours).await {
             info!("Starting scan...");
-            let keypair_pubkey = Keypair::from_bytes(&keypair_vec).unwrap().pubkey();
+            
             match scanner.find_reclaimable_accounts(&keypair_pubkey, &config.settings.whitelist) {
                 Ok(accounts) => {
                     info!("Found {} reclaimable accounts", accounts.len());
@@ -83,7 +96,7 @@ async fn sentinel_loop(config: Config, state: SharedState) -> anyhow::Result<()>
             }
         }
 
-        sleep(Duration::from_secs(60)).await; // Poll every minute for force_run or interval
+        sleep(Duration::from_secs(60)).await;
     }
 }
 

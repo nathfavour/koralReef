@@ -3,7 +3,6 @@ use solana_sdk::pubkey::Pubkey;
 use solana_client::rpc_filter::{RpcFilterType, Memcmp, MemcmpEncodedBytes};
 use solana_sdk::account::Account;
 use anyhow::Result;
-use std::str::FromStr;
 
 pub struct Scanner {
     client: RpcClient,
@@ -42,18 +41,8 @@ impl Scanner {
 
         let mut reclaimable = Vec::new();
         for (pubkey, account) in accounts {
-            if whitelist.contains(&pubkey.to_string()) {
-                continue;
-            }
-
-            // Check if token amount is 0
-            if account.data.len() == 165 {
-                let amount_bytes = &account.data[64..72];
-                let amount = u64::from_le_bytes(amount_bytes.try_into().unwrap());
-                
-                if amount == 0 && account.lamports > 0 {
-                    reclaimable.push((pubkey, account));
-                }
+            if crate::core::safety::is_safe_to_reclaim(&pubkey, &account, whitelist) {
+                reclaimable.push((pubkey, account));
             }
         }
 
