@@ -2,7 +2,7 @@
 
 # Kora Reclaim Bot Installer
 # Installs koralreef from source (fallback to pre-built binaries)
-# Usage: curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/master/install.sh | bash
 
 set -e
 
@@ -133,7 +133,7 @@ if [ ! -f "$DATA_DIR/config.toml" ]; then
     if [ -f "config.toml.example" ]; then
         cp config.toml.example "$DATA_DIR/config.toml"
     else
-        curl -sSL "https://raw.githubusercontent.com/$REPO/main/config.toml.example" -o "$DATA_DIR/config.toml"
+        curl -sSL "https://raw.githubusercontent.com/$REPO/master/config.toml.example" -o "$DATA_DIR/config.toml"
     fi
     echo -e "${YELLOW}Please edit $DATA_DIR/config.toml with your settings before starting.${NC}"
 fi

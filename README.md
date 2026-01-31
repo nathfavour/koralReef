@@ -14,7 +14,7 @@ High-performance Rust binary for reclaiming rent from idle Solana accounts.
 You can install the Kora Reclaim Bot directly using the following command:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/master/install.sh | bash
 ```
 
 This script will:
@@ -51,7 +51,7 @@ The simplest way to deploy on a Linux VPS (Ubuntu, Debian, etc.):
 
 ```bash
 # Run the universal installer
-curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/master/install.sh | bash
 
 # Configure your bot
 nano ~/.koralReef/config.toml

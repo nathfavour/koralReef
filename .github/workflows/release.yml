@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
     branches:
-      - main
+      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -84,7 +84,7 @@ jobs:
           merge-multiple: true
 
       - name: Update rolling tag
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
