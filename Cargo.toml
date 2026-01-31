@@ -1,7 +1,13 @@
 [package]
-name = "kora-reclaim-rs"
+name = "koralreef"
 version = "0.1.0"
 edition = "2021"
+description = "High-performance Solana rent reclamation bot"
+license = "MIT"
+repository = "https://github.com/nathfavour/koralReef"
+readme = "README.md"
+keywords = ["solana", "reclaim", "bot", "rent"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }

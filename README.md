@@ -8,9 +8,15 @@ High-performance Rust binary for reclaiming rent from idle Solana accounts.
 - **Secure Storage:** Encrypted SQLite database for sensitive configuration and keypairs.
 - **Systemd Integration:** Easy deployment as a persistent daemon.
 
-## Installation
+### Installation
 
-### Quick Install (Linux/macOS)
+#### 1. Via Cargo (Easiest)
+If you have Rust and Cargo installed:
+```bash
+cargo install koralreef
+```
+
+#### 2. Quick Install (Linux/macOS)
 You can install the Kora Reclaim Bot directly using the following command:
 
 ```bash
