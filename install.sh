@@ -15,7 +15,7 @@ fi
 REPO="nathfavour/koralReef"
 REPO_URL="https://github.com/$REPO.git"
 BINARY_NAME="koralreef"
-PROJECT_NAME="kora-reclaim-rs"
+PROJECT_NAME="koralreef"
 INSTALL_DIR="$HOME/.local/bin"
 DATA_DIR="$HOME/.koralReef"
 

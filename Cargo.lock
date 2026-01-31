@@ -2309,7 +2309,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kora-reclaim-rs"
+name = "koralreef"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",

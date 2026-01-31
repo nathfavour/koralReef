@@ -64,7 +64,7 @@ jobs:
 
       - name: Prepare Artifact
         run: |
-          cp target/${{ matrix.target }}/release/kora-reclaim-rs ./${{ matrix.binary_name }}
+          cp target/${{ matrix.target }}/release/koralreef ./${{ matrix.binary_name }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
