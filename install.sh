@@ -84,9 +84,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     SERVICE_DIR="$HOME/.config/systemd/user"
     mkdir -p "$SERVICE_DIR"
     
-    cat <<EOF > "$SERVICE_DIR/koralReef.service"
+    cat <<EOF > "$SERVICE_DIR/koralreef.service"
 [Unit]
-Description=Kora Reclaim Bot (koralReef)
+Description=Kora Reclaim Bot (koralreef)
 After=network.target
 
 [Service]
@@ -102,11 +102,11 @@ WantedBy=default.target
 EOF
 
     systemctl --user daemon-reload
-    echo -e "${GREEN}Systemd user service created at $SERVICE_DIR/koralReef.service${NC}"
-    echo -e "${BLUE}To start the bot: ${NC}systemctl --user start koralReef"
-    echo -e "${BLUE}To check status:  ${NC}systemctl --user status koralReef"
-    echo -e "${BLUE}To enable on boot: ${NC}systemctl --user enable koralReef"
-    echo -e "${YELLOW}Note: Run 'loginctl enable-linger \$USER' to allow the service to run without an active session.${NC}"
+    echo -e "${GREEN}Systemd user service created at $SERVICE_DIR/koralreef.service${NC}"
+    echo -e "${BLUE}To start the bot: ${NC}systemctl --user start koralreef"
+    echo -e "${BLUE}To check status:  ${NC}systemctl --user status koralreef"
+    echo -e "${BLUE}To enable on boot: ${NC}systemctl --user enable koralreef"
+    echo -e "${YELLOW}Note: Run 'loginctl enable-linger $USER' to allow the service to run without an active session.${NC}"
 fi
 
 # Cleanup
@@ -118,7 +118,8 @@ fi
 # Check if PATH includes INSTALL_DIR
 if [[ ":$PATH:" != ":$INSTALL_DIR:"* ]]; then
     echo -e "${YELLOW}Warning: $INSTALL_DIR is not in your PATH.${NC}"
-    echo -e "You can add it by adding 'export PATH="\$HOME/.local/bin:\$PATH"' to your .bashrc or .zshrc."
+    echo -e "You can add it by adding 'export PATH=\"
+$HOME/.local/bin:$PATH\"' to your .bashrc or .zshrc."
 fi
 
 echo -e "${GREEN}======================================${NC}"

@@ -1,4 +1,4 @@
-# Kora Reclaim Bot (`koralReef`)
+# Kora Reclaim Bot (`koralreef`)
 
 High-performance Rust binary for reclaiming rent from idle Solana accounts.
 
@@ -20,7 +20,7 @@ curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/main/install.sh
 This script will:
 1. Install Rust (if not already present).
 2. Build the project from source.
-3. Install the binary to `~/.local/bin/koralReef`.
+3. Install the binary to `~/.local/bin/koralreef`.
 4. Set up a default configuration in `~/.koralReef/config.toml`.
 5. Create a systemd user service (on Linux).
 
@@ -61,18 +61,18 @@ If you used the install script, you can manage the bot using `systemctl`:
 
 ```bash
 # Start the bot
-systemctl --user start koralReef
+systemctl --user start koralreef
 
 # Enable it to start on boot
-systemctl --user enable koralReef
+systemctl --user enable koralreef
 
 # Check logs
-journalctl --user -u koralReef -f
+journalctl --user -u koralreef -f
 ```
 
 ### Running Manually
 ```bash
-koralReef --config ~/.koralReef/config.toml
+koralreef --config ~/.koralReef/config.toml
 ```
 
 ### Commands
@@ -86,12 +86,9 @@ Interact with the bot via Telegram using these commands:
 - **Encrypted Storage:** All sensitive data (keys, tokens) is stored in an AES-256-GCM encrypted SQLite database at `~/.koralReef/koral.db`.
 - **Keypair Management:** You can securely import your Solana keypair directly into the encrypted database:
   ```bash
-  koralReef --import-key path/to/your/keypair.json
+  koralreef --import-key path/to/your/keypair.json
   ```
   Once imported, the bot no longer needs the plaintext JSON file.
-
-## License
-MIT
 
 ## License
 MIT
