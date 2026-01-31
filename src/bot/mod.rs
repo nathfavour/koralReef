@@ -11,6 +11,9 @@ use std::sync::Arc;
 pub async fn start_bot(config: Config, state: SharedState, storage: Arc<Storage>) {
     let bot = Bot::new(config.telegram.bot_token.clone());
 
+    // Register commands in the Telegram UI menu
+    let _ = bot.set_my_commands(Command::bot_commands()).await;
+
     let handler = Update::filter_message()
         .filter_command::<Command>()
         .endpoint(handle_command);
@@ -82,6 +85,16 @@ async fn handle_command(
                 format!("📜 Recent History:\n{}", logs.join("\n"))
             };
             bot.send_message(msg.chat.id, response).await?;
+        }
+        Command::Mode => {
+            let mut s = state.lock().await;
+            let new_mode = match s.mode {
+                crate::config::AppMode::Demo => crate::config::AppMode::Real,
+                crate::config::AppMode::Real => crate::config::AppMode::Demo,
+            };
+            s.mode = new_mode;
+            let msg_text = format!("🔄 Mode switched to: **{:?}**", new_mode);
+            bot.send_message(msg.chat.id, msg_text).parse_mode(teloxide::types::ParseMode::MarkdownV2).await?;
         }
         Command::Help => {
             let help_text = "📖 Kora Reclaim Bot Help\n\n\

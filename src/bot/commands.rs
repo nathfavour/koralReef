@@ -11,6 +11,8 @@ pub enum Command {
     Sweep,
     #[command(description = "Show recent event history")]
     Log,
+    #[command(description = "Switch between Demo and Real modes")]
+    Mode,
     #[command(description = "Show help information")]
     Help,
 }
