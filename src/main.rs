@@ -148,9 +148,14 @@ async fn sentinel_loop(
         None
     };
 
-    if config.mode == AppMode::Demo {
-        info!("Sentinel running in DEMO mode.");
-        loop {
+    loop {
+        let current_mode = {
+            let s = state.lock().await;
+            s.mode
+        };
+
+        if current_mode == AppMode::Demo {
+            // ... (demo logic)
             tokio::select! {
                 _ = cancel_token.cancelled() => {
                     info!("Sentinel (Demo) shutting down...");
@@ -161,6 +166,7 @@ async fn sentinel_loop(
                     {
                         let mut s = state.lock().await;
                         if s.force_run { force = true; s.force_run = false; }
+                        if s.mode != AppMode::Demo { continue; } // Mode changed
                     }
 
                     if force || should_scan(&state, config.settings.scan_interval_hours).await {
@@ -178,10 +184,12 @@ async fn sentinel_loop(
                     }
                 }
             }
+            continue;
         }
-    }
 
-    let scanner = Scanner::new(&config.solana.rpc_url);
+        // Real mode logic...
+        let scanner = Scanner::new(&config.solana.rpc_url);
+        // ... (rest of real mode setup and loop)
     
     // Check storage for keypair first, then fallback to config path
     let keypair_res = if let Some(key_json) = storage.get_keypair()? {
