@@ -4,9 +4,11 @@ use teloxide::prelude::*;
 use crate::state::SharedState;
 use crate::config::Config;
 use crate::bot::commands::Command;
+use crate::storage::Storage;
 use log::info;
+use std::sync::Arc;
 
-pub async fn start_bot(config: Config, state: SharedState) {
+pub async fn start_bot(config: Config, state: SharedState, storage: Arc<Storage>) {
     let bot = Bot::new(config.telegram.bot_token.clone());
 
     let handler = Update::filter_message()
@@ -15,7 +17,7 @@ pub async fn start_bot(config: Config, state: SharedState) {
 
     info!("Starting Telegram bot...");
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![state, config])
+        .dependencies(dptree::deps![state, config, storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
@@ -28,8 +30,22 @@ async fn handle_command(
     cmd: Command,
     state: SharedState,
     config: Config,
+    storage: Arc<Storage>,
 ) -> ResponseResult<()> {
-    if !config.telegram.authorized_user_ids.contains(&msg.from().unwrap().id.0) {
+    let user_id = msg.from().unwrap().id.0;
+    
+    // Check if we have an admin. If not, the first person to message becomes admin.
+    let admin = storage.get_admin().unwrap_or(None);
+    let is_admin = match admin {
+        Some(id) => id == user_id,
+        None => {
+            info!("No admin found. Setting user {} as admin.", user_id);
+            storage.set_admin(user_id).unwrap();
+            true
+        }
+    };
+
+    if !is_admin && !config.telegram.authorized_user_ids.contains(&user_id) {
         bot.send_message(msg.chat.id, "Unauthorized.").await?;
         return Ok(());
     }

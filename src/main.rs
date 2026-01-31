@@ -1,27 +1,36 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
-use kora_reclaim_rs::config::Config;
+use kora_reclaim_rs::config::{Config, AppMode};
 use kora_reclaim_rs::state::{AppState, SharedState};
 use kora_reclaim_rs::core::scanner::Scanner;
 use kora_reclaim_rs::core::reclaimer::Reclaimer;
 use kora_reclaim_rs::bot;
+use kora_reclaim_rs::storage::Storage;
 use solana_sdk::signature::{Keypair, Signer};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
-use log::{info, error};
+use log::{info, error, warn};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Path to the configuration file
-    #[arg(short, long, default_value = "config.toml")]
-    config: String,
+    #[arg(short, long)]
+    config: Option<String>,
 
-    /// Run in dry-run mode (overrides config)
+    /// Run in dry-run mode
     #[arg(short, long)]
     dry_run: bool,
+
+    /// Set mode (demo or real)
+    #[arg(short, long)]
+    mode: Option<String>,
+
+    /// Set Telegram Bot Token
+    #[arg(long)]
+    token: Option<String>,
 }
 
 #[tokio::main]
@@ -30,36 +39,94 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     info!("Starting kora-reclaim-rs...");
 
-    let mut config = Config::load(&args.config).expect("Failed to load configuration file");
+    let storage = Arc::new(Storage::init()?);
+
+    // Initial config loading logic
+    let mut config = if let Some(path) = args.config {
+        Config::load(path)?
+    } else if let Some(mode_str) = &args.mode {
+        if mode_str.to_lowercase() == "demo" {
+            Config::demo()
+        } else {
+            // Try to load from DB or use default real skeleton
+            load_config_from_storage(&storage).unwrap_or_else(|_| Config::demo())
+        }
+    } else {
+        load_config_from_storage(&storage).unwrap_or_else(|_| Config::demo())
+    };
+
+    if let Some(token) = args.token {
+        storage.set_setting("bot_token", &token, true)?;
+        config.telegram.bot_token = token;
+    } else if config.telegram.bot_token.is_empty() {
+        if let Some(token) = storage.get_setting("bot_token")? {
+            config.telegram.bot_token = token;
+        }
+    }
+
     if args.dry_run {
         config.settings.dry_run = true;
     }
+
+    if config.telegram.bot_token.is_empty() {
+        warn!("Telegram Bot Token is missing. Bot will not start.");
+    }
+
     let state: SharedState = Arc::new(Mutex::new(AppState::new()));
 
     let bot_state = state.clone();
     let bot_config = config.clone();
-    tokio::spawn(async move {
-        bot::start_bot(bot_config, bot_state).await;
-    });
-
-    let sentinel_state = state.clone();
-    let sentinel_config = config.clone();
+    let bot_storage = storage.clone();
     
-    sentinel_loop(sentinel_config, sentinel_state).await?;
+    if !bot_config.telegram.bot_token.is_empty() {
+        tokio::spawn(async move {
+            bot::start_bot(bot_config, bot_state, bot_storage).await;
+        });
+    }
+
+    sentinel_loop(config, state, storage).await?;
 
     Ok(())
 }
 
-async fn sentinel_loop(config: Config, state: SharedState) -> anyhow::Result<()> {
+fn load_config_from_storage(storage: &Storage) -> anyhow::Result<Config> {
+    // This is a simplified loader. In a full app, we'd store all fields in SQLite.
+    let token = storage.get_setting("bot_token")?.unwrap_or_default();
+    let mut config = Config::demo();
+    config.mode = AppMode::Real;
+    config.telegram.bot_token = token;
+    Ok(config)
+}
+
+async fn sentinel_loop(config: Config, state: SharedState, _storage: Arc<Storage>) -> anyhow::Result<()> {
+    if config.mode == AppMode::Demo {
+        info!("Sentinel running in DEMO mode.");
+        loop {
+            sleep(Duration::from_secs(30)).await;
+            info!("Demo scan: no accounts found.");
+        }
+    }
+
     let scanner = Scanner::new(&config.solana.rpc_url);
     
-    let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)
-        .expect("Failed to read keypair file");
-    let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)
-        .expect("Failed to parse keypair JSON");
-    let keypair = Keypair::from_bytes(&keypair_vec).expect("Invalid keypair bytes");
+    // In real mode, we need a valid keypair
+    let keypair_res = if config.solana.keypair_path.is_empty() {
+        Err(anyhow::anyhow!("No keypair path provided"))
+    } else {
+        let keypair_bytes = std::fs::read_to_string(&config.solana.keypair_path)?;
+        let keypair_vec: Vec<u8> = serde_json::from_str(&keypair_bytes)?;
+        Ok(Keypair::from_bytes(&keypair_vec)?)
+    };
+
+    let keypair = match keypair_res {
+        Ok(k) => k,
+        Err(e) => {
+            error!("Failed to load keypair: {}. Sentinel will wait.", e);
+            loop { sleep(Duration::from_secs(60)).await; }
+        }
+    };
+
     let keypair_pubkey = keypair.pubkey();
-    
     let treasury = Pubkey::from_str(&config.solana.treasury_address)?;
     let reclaimer = Reclaimer::new(&config.solana.rpc_url, keypair, treasury);
 
