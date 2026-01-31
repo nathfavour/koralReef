@@ -87,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
         warn!("Telegram Bot Token is missing. Bot will not start.");
     }
 
-    let state: SharedState = Arc::new(Mutex::new(AppState::new()));
+    let state: SharedState = Arc::new(Mutex::new(AppState::new(config.mode)));
 
     let bot_state = state.clone();
     let bot_config = config.clone();
