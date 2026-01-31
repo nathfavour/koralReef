@@ -91,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let mut initial_state = AppState::new(config.mode);
-    if args.demo_only {
+    if args.demo_only || config.settings.demo_only.unwrap_or(false) {
         initial_state.mode = AppMode::Demo;
         initial_state.demo_only = true;
     }

@@ -10,6 +10,7 @@ authorized_user_ids = [12345678, 87654321]
 [settings]
 scan_interval_hours = 6
 dry_run = true
+demo_only = true
 whitelist = [
     "CriticalAccountPubkey1",
     "CriticalAccountPubkey2"

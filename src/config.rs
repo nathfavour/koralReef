@@ -33,6 +33,7 @@ pub struct TelegramConfig {
 pub struct Settings {
     pub scan_interval_hours: u64,
     pub dry_run: bool,
+    pub demo_only: Option<bool>,
     pub whitelist: Vec<String>,
 }
 
@@ -61,6 +62,7 @@ impl Config {
             settings: Settings {
                 scan_interval_hours: 1,
                 dry_run: true,
+                demo_only: Some(true),
                 whitelist: vec![],
             },
         }
