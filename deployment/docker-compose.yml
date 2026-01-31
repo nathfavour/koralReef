@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  koralreef:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: koralreef
+    volumes:
+      - ./config.toml:/data/config.toml
+      - koralreef-data:/root/.koralReef
+    restart: always
+
+volumes:
+  koralreef-data:

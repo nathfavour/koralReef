@@ -40,6 +40,46 @@ export PATH="$HOME/.local/bin:$PATH"
    make install
    ```
 
+## Self-Deployment
+
+`koralreef` is designed to be a lightweight, self-hosted worker. We highly encourage operators to deploy their own instances on personal infrastructure to maintain full control over their keys and reclaimed funds.
+
+### Deployment Options
+
+#### 1. VPS (Recommended for Reliability)
+The simplest way to deploy on a Linux VPS (Ubuntu, Debian, etc.):
+
+```bash
+# Run the universal installer
+curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/main/install.sh | bash
+
+# Configure your bot
+nano ~/.koralReef/config.toml
+
+# Start the service
+systemctl --user enable --now koralreef
+```
+
+#### 2. Docker (Cloud Agnostic)
+Ideal for AWS (ECS), Azure (Container Instances), or DigitalOcean:
+
+```bash
+cd deployment
+# Edit the config.toml in the deployment folder
+docker-compose up -d
+```
+
+#### 3. Manual Cloud Deployment (AWS/Azure/GCP)
+- **AWS EC2 / Azure VM:** Follow the VPS instructions. Use a `t3.micro` or similar instance (it's very lightweight).
+- **Security Note:** Ensure your VPS firewall allows outgoing connections to Solana RPC and Telegram API. No incoming ports need to be opened.
+
+### Why Self-Deploy?
+- **Key Sovereignty:** Your Solana private keys never leave your infrastructure.
+- **Custom Whitelisting:** Easily manage which accounts are "safe" according to your specific needs.
+- **Zero Fees:** Reclaim 100% of the rent directly to your treasury without middleman fees.
+
+---
+
 ## Configuration
 Edit `~/.koralReef/config.toml` to configure your Solana RPC, Telegram Bot Token, and Treasury address.
 
