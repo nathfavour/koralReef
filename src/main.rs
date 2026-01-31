@@ -38,6 +38,10 @@ struct Args {
     /// Import Solana keypair from file to encrypted database
     #[arg(long)]
     import_key: Option<String>,
+
+    /// Lock the bot in demo mode (cannot be switched via Telegram)
+    #[arg(long)]
+    demo_only: bool,
 }
 
 #[tokio::main]
@@ -86,7 +90,13 @@ async fn main() -> anyhow::Result<()> {
         warn!("Telegram Bot Token is missing. Bot will not start.");
     }
 
-    let state: SharedState = Arc::new(Mutex::new(AppState::new(config.mode)));
+    let mut initial_state = AppState::new(config.mode);
+    if args.demo_only {
+        initial_state.mode = AppMode::Demo;
+        initial_state.demo_only = true;
+    }
+    
+    let state: SharedState = Arc::new(Mutex::new(initial_state));
 
     let bot_state = state.clone();
     let bot_config = config.clone();

@@ -9,6 +9,7 @@ pub struct AppState {
     pub start_time: Instant,
     pub force_run: bool,
     pub mode: AppMode,
+    pub demo_only: bool,
     pub last_scan_time: Option<Instant>,
     pub last_reclaim_summary: Option<String>,
 }
@@ -21,6 +22,7 @@ impl AppState {
             start_time: Instant::now(),
             force_run: false,
             mode,
+            demo_only: false,
             last_scan_time: None,
             last_reclaim_summary: None,
         }
