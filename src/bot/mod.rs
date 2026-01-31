@@ -38,20 +38,34 @@ async fn handle_command(
 ) -> ResponseResult<()> {
     let user_id = msg.from().unwrap().id.0;
     
-    // Check if we have an admin. If not, the first person to message becomes admin.
-    let admin = storage.get_admin().unwrap_or(None);
-    let is_admin = match admin {
-        Some(id) => id == user_id,
-        None => {
-            info!("No admin found. Setting user {} as admin.", user_id);
-            storage.set_admin(user_id).unwrap();
-            true
-        }
+    let current_mode = {
+        let s = state.lock().await;
+        s.mode
     };
 
-    if !is_admin && !config.telegram.authorized_user_ids.contains(&user_id) {
-        bot.send_message(msg.chat.id, "Unauthorized.").await?;
-        return Ok(());
+    if current_mode == crate::config::AppMode::Real {
+        // In Real mode, handle authorization strictly
+        let admin = storage.get_admin().unwrap_or(None);
+        let is_admin = match admin {
+            Some(id) => id == user_id,
+            None => {
+                info!("No admin found. Setting first messenger (user {}) as admin.", user_id);
+                storage.set_admin(user_id).unwrap();
+                bot.send_message(msg.chat.id, "🔐 You have been registered as the sole administrator for this koralreef worker.").await?;
+                true
+            }
+        };
+
+        if !is_admin {
+            bot.send_message(msg.chat.id, "🚫 Unauthorized. This bot is locked to another administrator.").await?;
+            return Ok(());
+        }
+    } else {
+        // In Demo mode, we still track the admin but don't block others
+        let admin = storage.get_admin().unwrap_or(None);
+        if admin.is_none() {
+            let _ = storage.set_admin(user_id);
+        }
     }
 
     match cmd {
