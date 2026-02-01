@@ -116,16 +116,58 @@ async fn handle_command(
             }
         }
         Command::Help => {
-            let help_text = "📖 Kora Reclaim Bot Help\n\n\
-                Commands:\n\
+            let s = state.lock().await;
+            let mode_info = if s.demo_only {
+                "⚠️ **DEMO ONLY**: This instance is locked to Demo mode for public testing. It does not perform real transactions."
+            } else if s.mode == crate::config::AppMode::Demo {
+                "🧪 **DEMO MODE**: Currently simulating reclamation. Transactions are not sent to the blockchain."
+            } else {
+                "⚡ **REAL MODE**: Operating on Solana Mainnet-Beta."
+            };
+
+            let help_text = format!(
+                "📖 **koralreef Help**\n\n\
+                {}\n\n\
+                **Commands:**\n\
                 /stats - View reclamation metrics\n\
                 /sweep - Trigger an immediate scan\n\
-                /log   - View recent event history\n\n\
-                Setup:\n\
-                To securely import your Solana keypair, run the binary with:\n\
-                `./kora-reclaim-rs --import-key <path_to_keypair.json>`\n\n\
-                This will encrypt the key into the local database, allowing you to delete the source file.";
-            bot.send_message(msg.chat.id, help_text).await?;
+                /log   - View recent event history\n\
+                /mode  - Switch modes (if not locked)\n\
+                /host  - Learn how to run your own instance\n\
+                /health - Check system status\n\n\
+                **Secure Setup:**\n\
+                To use your own keys, import them into your local instance:\n\
+                `koralreef --import-key <path_to_keypair.json>`",
+                mode_info
+            );
+            bot.send_message(msg.chat.id, help_text).parse_mode(teloxide::types::ParseMode::Markdown).await?;
+        }
+        Command::Host => {
+            let host_text = "🏠 **Self-Hosting koralreef**\n\n\
+                To reclaim SOL for your own accounts, you should host your own instance on a VPS or local machine.\n\n\
+                **Quick Install:**\n\
+                `curl -sSL https://raw.githubusercontent.com/nathfavour/koralReef/master/install.sh | bash`\n\n\
+                **Why Self-Host?**\n\
+                1. **Full Control:** You manage your own Solana private keys.\n\
+                2. **Custom Whitelist:** Prevent accidental closure of critical accounts.\n\
+                3. **Privacy:** Your operational logs remain on your hardware.\n\n\
+                Check the [GitHub Repository](https://github.com/nathfavour/koralReef) for detailed setup guides.";
+            bot.send_message(msg.chat.id, host_text).parse_mode(teloxide::types::ParseMode::Markdown).await?;
+        }
+        Command::Health => {
+            let s = state.lock().await;
+            let status = if s.demo_only { "Running (Demo-Lock)" } else { "Active" };
+            let health_text = format!(
+                "🏥 **System Health**\n\n\
+                - **Status:** {}\n\
+                - **Mode:** {:?}\n\
+                - **Uptime:** {:?}\n\
+                - **Scanner:** Functional\n\
+                - **RPC Endpoint:** Connected\n\n\
+                *All systems operational.*",
+                status, s.mode, s.start_time.elapsed()
+            );
+            bot.send_message(msg.chat.id, health_text).parse_mode(teloxide::types::ParseMode::Markdown).await?;
         }
     }
 

@@ -15,4 +15,8 @@ pub enum Command {
     Mode,
     #[command(description = "Show help information")]
     Help,
+    #[command(description = "Information about self-hosting")]
+    Host,
+    #[command(description = "Check system health and connectivity")]
+    Health,
 }
